@@ -86,44 +86,81 @@
         <p id="status">Status: Waiting for action...</p>
     </div>
 
+    <!-- Firebase Integration -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
     <script>
-      let walletAddress = null;
-      const yourWalletAddress = "UQDdTCAsGA8MUru-XnT22oQYt32OU0Iac3SnqJUFNxpJdoiG"; // استبدل YOUR_WALLET_ADDRESS بمحفظتك الخاصة
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAjKT4voELBTg_XXMjZjvF54jRYi8_N-0",
+            authDomain: "alextest-79a46.firebaseapp.com",
+            projectId: "alextest-79a46",
+            storageBucket: "alextest-79a46.firebasestorage.app",
+            messagingSenderId: "671025130789",
+            appId: "1:671025130789:web:2f213ee6a95514906d7ecc",
+            measurementId: "G-CT2398KFG8"
+        };
 
-      function connectTonkeeper() {
-          const tonkeeperLink = `ton://connect`;
-          window.open(tonkeeperLink, '_blank');
-          document.getElementById('status').textContent = "Tonkeeper connection initiated...";
-      }
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-      async function buyService(amount) {
-          if (!walletAddress) {
-              alert('Please connect your wallet first.');
-              return;
-          }
+        function saveTransaction(transaction) {
+            db.collection("transactions").add(transaction)
+                .then((docRef) => {
+                    console.log("Transaction saved with ID: ", docRef.id);
+                })
+                .catch((error) => {
+                    console.error("Error adding transaction: ", error);
+                });
+        }
 
-          try {
-              const recipientAddress = yourWalletAddress; // العنوان الخاص بك لاستلام المبالغ
-              const amountNano = TonWeb.utils.toNano(amount); // تحويل إلى نانو TON
-              document.getElementById('status').textContent = `Sending ${amount} TON...`;
+        let walletAddress = null;
+        const yourWalletAddress = "UQDdTCAsGA8MUru-XnT22oQYt32OU0Iac3SnqJUFNxpJdoiG"; // استبدل YOUR_WALLET_ADDRESS بمحفظتك الخاصة
 
-              const tonkeeperSendLink = `ton://transfer/${recipientAddress}?amount=${amountNano}&text=Service+Purchase`;
-              window.open(tonkeeperSendLink, '_blank');
+        function connectTonkeeper() {
+            const tonkeeperLink = `ton://transfer/${yourWalletAddress}?text=Wallet+Connection`;
+            window.open(tonkeeperLink, '_blank');
+            document.getElementById('status').textContent = "Tonkeeper connection initiated...";
+        }
 
-              document.getElementById('status').textContent = "Transaction sent. Await confirmation.";
-          } catch (error) {
-              document.getElementById('status').textContent = "Transaction failed. Error: " + error.message;
-          }
-      }
+        async function buyService(amount) {
+            if (!yourWalletAddress) {
+                alert('Please connect your wallet first.');
+                return;
+            }
 
-      // Monitor for Tonkeeper wallet address (simplified for example)
-      window.addEventListener('message', function(event) {
-          if (event.origin === 'tonkeeper://') {
-              walletAddress = event.data.address;
-              document.getElementById('wallet-address').textContent = `Connected Wallet: ${walletAddress}`;
-              document.getElementById('status').textContent = "Wallet connected successfully!";
-          }
-      }, false);
+            try {
+                const recipientAddress = yourWalletAddress; // العنوان الخاص بك لاستلام المبالغ
+                const amountNano = TonWeb.utils.toNano(amount); // تحويل إلى نانو TON
+                document.getElementById('status').textContent = `Sending ${amount} TON...`;
+
+                const tonkeeperSendLink = `ton://transfer/${recipientAddress}?amount=${amountNano}&text=Service+Purchase`;
+                window.open(tonkeeperSendLink, '_blank');
+
+                document.getElementById('status').textContent = "Transaction sent. Await confirmation.";
+
+                // حفظ المعاملة في Firebase
+                const transaction = {
+                    recipientAddress: recipientAddress,
+                    amount: amount,
+                    timestamp: new Date().toISOString()
+                };
+                saveTransaction(transaction);
+
+            } catch (error) {
+                document.getElementById('status').textContent = "Transaction failed. Error: " + error.message;
+            }
+        }
+
+        window.addEventListener('message', function(event) {
+            if (event.origin === 'tonkeeper://') {
+                walletAddress = event.data.address;
+                document.getElementById('wallet-address').textContent = `Connected Wallet: ${walletAddress}`;
+                document.getElementById('status').textContent = "Wallet connected successfully!";
+            }
+        }, false);
     </script>
 </body>
 </html>
