@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TON Web Wallet</title>
+    <title>TON Web Wallet - Services</title>
     <script src="https://cdn.jsdelivr.net/npm/tonweb@latest"></script>
     <style>
         body {
@@ -22,7 +22,7 @@
             color: #00f;
         }
 
-        input, button {
+        .service-btn {
             padding: 10px;
             margin: 10px;
             width: 300px;
@@ -31,15 +31,12 @@
             background-color: #111;
             color: #00f;
             transition: background-color 0.3s, transform 0.3s;
+            cursor: pointer;
         }
 
-        input:focus, button:hover {
+        .service-btn:hover {
             background-color: #222;
             transform: scale(1.05);
-        }
-
-        button {
-            cursor: pointer;
         }
 
         #stars {
@@ -71,28 +68,17 @@
 <body>
     <div id="stars"></div>
 
-    <h1>TON Web Wallet</h1>
-
-    <!-- عرض عنوان المحفظة -->
-    <div>
-        <label>Your Wallet Address:</label>
-        <p id="wallet-address">Not Connected</p>
-    </div>
+    <h1>TON Services</h1>
 
     <!-- ربط المحفظة باستخدام Tonkeeper -->
     <button onclick="connectTonkeeper()">Connect via Tonkeeper</button>
+    <p id="wallet-address">Wallet not connected</p>
 
-    <!-- إرسال العملات -->
+    <!-- الخدمات -->
     <div>
-        <input type="text" id="recipientAddress" placeholder="Recipient Address">
-        <input type="text" id="amount" placeholder="Amount (TON)">
-        <button onclick="sendTransaction()">Send Transaction</button>
-    </div>
-
-    <!-- استلام العملات -->
-    <div>
-        <input type="text" id="transactionMessage" placeholder="Transaction Message">
-        <button onclick="receiveTransaction()">Receive Transaction</button>
+        <button class="service-btn" onclick="buyService(0.3)">Buy Service 1 - 0.3 TON</button>
+        <button class="service-btn" onclick="buyService(0.2)">Buy Service 2 - 0.2 TON</button>
+        <button class="service-btn" onclick="buyService(0.1)">Buy Service 3 - 0.1 TON</button>
     </div>
 
     <!-- رسائل التفاعل -->
@@ -100,91 +86,44 @@
         <p id="status">Status: Waiting for action...</p>
     </div>
 
-    <!-- Firebase Integration -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
     <script>
-      // Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyCAjKT4voELBTg_XXMjZjvF54jRYi8_N-0",
-        authDomain: "alextest-79a46.firebaseapp.com",
-        projectId: "alextest-79a46",
-        storageBucket: "alextest-79a46.firebasestorage.app",
-        messagingSenderId: "671025130789",
-        appId: "1:671025130789:web:2f213ee6a95514906d7ecc",
-        measurementId: "G-CT2398KFG8"
-      };
-
-      // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-
-      // Function to save transaction in Firebase
-      function saveTransaction(transaction) {
-          db.collection("transactions").add(transaction)
-          .then((docRef) => {
-              console.log("Transaction saved with ID: ", docRef.id);
-          })
-          .catch((error) => {
-              console.error("Error adding transaction: ", error);
-          });
-      }
-
-      // TON wallet and transaction logic
-      let tonweb, wallet, keyPair;
+      let walletAddress = null;
+      const yourWalletAddress = "YOUR_WALLET_ADDRESS"; // استبدل YOUR_WALLET_ADDRESS بمحفظتك الخاصة
 
       function connectTonkeeper() {
+          const tonkeeperLink = `ton://connect`;
+          window.open(tonkeeperLink, '_blank');
           document.getElementById('status').textContent = "Tonkeeper connection initiated...";
-          window.open('tonkeeper://connect', '_blank');
       }
 
-      async function sendTransaction() {
-          const recipientAddress = document.getElementById('recipientAddress').value;
-          const amount = document.getElementById('amount').value;
-
-          if (!recipientAddress || !amount || !wallet || !keyPair) {
-              alert('Please make sure to enter all required fields and connect wallet.');
+      async function buyService(amount) {
+          if (!walletAddress) {
+              alert('Please connect your wallet first.');
               return;
           }
 
           try {
+              const recipientAddress = yourWalletAddress; // العنوان الخاص بك لاستلام المبالغ
               const amountNano = TonWeb.utils.toNano(amount); // تحويل إلى نانو TON
-              const seqno = await wallet.methods.seqno().call();
+              document.getElementById('status').textContent = `Sending ${amount} TON...`;
 
-              const transfer = wallet.methods.transfer({
-                  secretKey: keyPair.secretKey,
-                  toAddress: recipientAddress,
-                  amount: amountNano,
-                  seqno: seqno,
-                  payload: 'Transaction from TON Web Wallet',
-                  sendMode: 3,
-              });
+              const tonkeeperSendLink = `ton://transfer/${recipientAddress}?amount=${amountNano}&text=Service+Purchase`;
+              window.open(tonkeeperSendLink, '_blank');
 
-              await transfer.send();
-              document.getElementById('status').textContent = "Transaction sent successfully!";
-
-              // Save transaction in Firebase
-              const transaction = {
-                  recipientAddress: recipientAddress,
-                  amount: amount,
-                  timestamp: new Date().toISOString()
-              };
-              saveTransaction(transaction);
-
+              document.getElementById('status').textContent = "Transaction sent. Await confirmation.";
           } catch (error) {
               document.getElementById('status').textContent = "Transaction failed. Error: " + error.message;
           }
       }
 
-      function receiveTransaction() {
-          const transactionMessage = document.getElementById('transactionMessage').value;
-          if (transactionMessage) {
-              document.getElementById('status').textContent = "Transaction received: " + transactionMessage;
-          } else {
-              document.getElementById('status').textContent = "No transaction message provided.";
+      // Monitor for Tonkeeper wallet address (simplified for example)
+      window.addEventListener('message', function(event) {
+          if (event.origin === 'tonkeeper://') {
+              walletAddress = event.data.address;
+              document.getElementById('wallet-address').textContent = `Connected Wallet: ${walletAddress}`;
+              document.getElementById('status').textContent = "Wallet connected successfully!";
           }
-      }
+      }, false);
     </script>
 </body>
 </html>
