@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TON Web Wallet</title>
+    <script src="https://cdn.jsdelivr.net/npm/tonweb@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TON Web Wallet</h1>
+
+    <!-- عرض عنوان المحفظة -->
+    <div>
+        <label>Your Wallet Address:</label>
+        <p id="wallet-address">Not Connected</p>
+    </div>
+
+    <!-- حقل لإدخال مفتاح خاص لربط المحفظة -->
+    <input type="text" id="privateKey" placeholder="Enter your Private Key">
+    <button onclick="connectWallet()">Connect Wallet</button>
+
+    <!-- إرسال العملات -->
+    <div>
+        <input type="text" id="recipientAddress" placeholder="Recipient Address">
+        <input type="text" id="amount" placeholder="Amount (TON)">
+        <button onclick="sendTransaction()">Send Transaction</button>
+    </div>
+
+    <!-- رسائل التفاعل -->
+    <div>
+        <p id="status">Status: Waiting for action...</p>
+    </div>
+
+    <script>
+        let tonweb, wallet, keyPair;
+
+        function connectWallet() {
+            const privateKey = document.getElementById('privateKey').value;
+            if (!privateKey) {
+                alert('Please enter a valid private key');
+                return;
+            }
+            try {
+                tonweb = new TonWeb();
+                keyPair = tonweb.utils.keyPairFromSeed(TonWeb.utils.base64ToBytes(privateKey));
+                wallet = tonweb.wallet.create({ publicKey: keyPair.publicKey });
+                wallet.getAddress().then((address) => {
+                    document.getElementById('wallet-address').textContent = address.toString();
+                    document.getElementById('status').textContent = "Wallet connected.";
+                });
+            } catch (error) {
+                document.getElementById('status').textContent = "Failed to connect wallet. Error: " + error.message;
+            }
+        }
+
+        async function sendTransaction() {
+            const recipientAddress = document.getElementById('recipientAddress').value;
+            const amount = document.getElementById('amount').value;
+
+            if (!recipientAddress || !amount || !wallet || !keyPair) {
+                alert('Please make sure to enter all required fields and connect wallet.');
+                return;
+            }
+
+            try {
+                const amountNano = TonWeb.utils.toNano(amount); // تحويل إلى نانو TON
+                const seqno = await wallet.methods.seqno().call();
+
+                const transfer = wallet.methods.transfer({
+                    secretKey: keyPair.secretKey,
+                    toAddress: recipientAddress,
+                    amount: amountNano,
+                    seqno: seqno,
+                    payload: 'Transaction from TON Web Wallet',  // رسالة تتبع العملية
+                    sendMode: 3,
+                });
+
+                await transfer.send();
+                document.getElementById('status').textContent = "Transaction sent successfully!";
+            } catch (error) {
+                document.getElementById('status').textContent = "Transaction failed. Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
